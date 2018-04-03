@@ -3,19 +3,13 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Queue;
+import java.io.*;
+import java.util.*;
 
 
 public class Main {
 
-    public static String baseUrl = "http://php.net/";
+    public static String baseUrl;
 
     public static int matrixSize = 100;
 
@@ -25,9 +19,30 @@ public class Main {
     public static ArrayList<String> hrefsArr = new ArrayList<>();
 
     public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Введите URL:");
+        baseUrl = scanner.nextLine().replaceAll("\\s", "");
 
+        if (matrixFileExists()) {
+            readFromFile();
+        } else {
+            System.out.println("Введите размер матрицы:");
+            matrixSize = Integer.valueOf(scanner.nextLine());
+
+            readFromUrl();
+            writeToFile();
+        }
+        System.out.println("PageRank: "+ getPageRank(matrix, matrixSize));
+    }
+
+    public static boolean matrixFileExists() {
+        File f = new File(getFilePath(baseUrl));
+        return f.exists();
+    }
+
+    public static void readFromUrl(){
+        System.out.println("Чтение по http...");
         try {
-
             String currLink = "/";
             hrefsQueue.add(currLink);
             hrefsArr.add(currLink);
@@ -53,9 +68,8 @@ public class Main {
                 currLink = hrefsQueue.poll();
             }
 
-            System.out.println(hrefsArr);
-
             for (int i = 0; i < hrefsArr.size(); i++) {
+                System.out.println(i+"/"+matrixSize);
                 Document doc = Jsoup.connect(baseUrl + hrefsArr.get(i)).get();
                 for (int j = 0; j < hrefsArr.size(); j++) {
 
@@ -69,20 +83,35 @@ public class Main {
                 }
             }
 
-            writeToFile();
-
-            System.out.println(getPageRank(matrix, matrixSize));
-
         } catch (Exception e) {
             System.out.println(e);
         }
     }
 
+    public static void readFromFile() {
+        System.out.println("Чтение из файла...");
+        try (BufferedReader br = new BufferedReader(new FileReader(getFilePath(baseUrl)))) {
+            String line;
+            matrixSize = Integer.valueOf(br.readLine());
+            br.readLine();
+            hrefsArr = new ArrayList<String>(Arrays.asList(br.readLine().split(";")));
+
+            int i = 0;
+            while ((line = br.readLine()) != null) {
+                matrix[i] = Arrays.asList(line.split(" ")).stream().mapToInt(Integer::parseInt).toArray();
+                i++;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public static void writeToFile() {
+        System.out.println("Запись в файл...");
 
         Writer writer = null;
         try {
-            writer = new BufferedWriter(new FileWriter("./" + getFileName(baseUrl) + ".txt"));
+            writer = new BufferedWriter(new FileWriter(getFilePath(baseUrl)));
             writer.append(matrixSize + "\n");
             writer.append(baseUrl + "\n");
 
@@ -95,11 +124,15 @@ public class Main {
             for (int i = 0; i < matrix.length; i++) {
                 for (int j = 0; j < matrix[i].length; j++) {
                     writer.append(matrix[i][j] + " ");
+                    System.out.print(matrix[i][j] + " ");
                 }
                 writer.append("\n");
+                System.out.println();
             }
 
             writer.flush();
+            System.out.println("Готово!");
+
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -112,8 +145,8 @@ public class Main {
         }
     }
 
-    public static String getFileName(String url) {
-        return url.replaceAll("https|http|/|:", "");
+    public static String getFilePath(String url) {
+        return "./" + url.replaceAll("https|http|/|:|\\s", "") + ".txt";
     }
 
     private static double getPageRank(int[][] matrix, int matrixSize) {
@@ -127,11 +160,10 @@ public class Main {
 
         for (int i = 0; i < matrixSize; i++) {
             pagesRankOld[i] = 1;
-            for (int j = 0; j < matrixSize; j++){
+            for (int j = 0; j < matrixSize; j++) {
                 c[i] += matrix[i][j];
             }
         }
-
         do {
             eps = 0;
 
