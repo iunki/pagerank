@@ -44,7 +44,6 @@ public class Main {
                         if (!hrefsArr.contains(link) && !link.equals("/") && link.length() > 0 && link.charAt(0) == '/') {
                             hrefsQueue.add(link);
                             hrefsArr.add(link);
-                            System.out.println(link);
                         }
                     } else {
                         flag = false;
@@ -53,8 +52,6 @@ public class Main {
 
                 currLink = hrefsQueue.poll();
             }
-
-            System.out.println(hrefsArr);
 
             for (int i = 0; i < hrefsArr.size(); i++){
                 Document doc = Jsoup.connect(baseUrl + hrefsArr.get(i)).get();
@@ -78,7 +75,7 @@ public class Main {
     }
 
     public static void writeToFile(){
-
+        System.out.println("Запись в файл...");
         Writer writer = null;
         try {
             writer = new BufferedWriter(new FileWriter("./"+getFileName(baseUrl)+".txt"));
@@ -99,6 +96,7 @@ public class Main {
             }
 
             writer.flush();
+            System.out.println("Готово!");
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
