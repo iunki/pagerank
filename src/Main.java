@@ -44,7 +44,6 @@ public class Main {
                         if (!hrefsArr.contains(link) && !link.equals("/") && link.length() > 0 && link.charAt(0) == '/') {
                             hrefsQueue.add(link);
                             hrefsArr.add(link);
-                            System.out.println(link);
                         }
                     } else {
                         flag = false;
@@ -56,13 +55,13 @@ public class Main {
 
             System.out.println(hrefsArr);
 
-            for (int i = 0; i < hrefsArr.size(); i++){
+            for (int i = 0; i < hrefsArr.size(); i++) {
                 Document doc = Jsoup.connect(baseUrl + hrefsArr.get(i)).get();
-                for (int j = 0; j< hrefsArr.size(); j++){
+                for (int j = 0; j < hrefsArr.size(); j++) {
 
                     Elements siteHrefs = doc.select("a");
-                    for (Element tag : siteHrefs){
-                        if (tag.attr("href").equals(hrefsArr.get(j))){
+                    for (Element tag : siteHrefs) {
+                        if (tag.attr("href").equals(hrefsArr.get(j))) {
                             matrix[i][j]++;
                         }
                     }
@@ -72,20 +71,22 @@ public class Main {
 
             writeToFile();
 
+            System.out.println(getPageRank(matrix, matrixSize));
+
         } catch (Exception e) {
             System.out.println(e);
         }
     }
 
-    public static void writeToFile(){
+    public static void writeToFile() {
 
         Writer writer = null;
         try {
-            writer = new BufferedWriter(new FileWriter("./"+getFileName(baseUrl)+".txt"));
-            writer.append(matrixSize+"\n");
-            writer.append(baseUrl+"\n");
+            writer = new BufferedWriter(new FileWriter("./" + getFileName(baseUrl) + ".txt"));
+            writer.append(matrixSize + "\n");
+            writer.append(baseUrl + "\n");
 
-            for (int i=0;i<hrefsArr.size();i++){
+            for (int i = 0; i < hrefsArr.size(); i++) {
                 writer.append(hrefsArr.get(i) + ";");
             }
 
@@ -111,7 +112,50 @@ public class Main {
         }
     }
 
-    public static String getFileName(String url){
-        return url.replaceAll("https|http|/|:" , "");
+    public static String getFileName(String url) {
+        return url.replaceAll("https|http|/|:", "");
+    }
+
+    private static double getPageRank(int[][] matrix, int matrixSize) {
+        double PR = 0; //PageRank рассматриваемой страницы
+        double d = 0.85; //коэфициент затухания
+        int c[] = new int[matrixSize]; //общее число ссылок на i-й странице
+        double sum; // d * (sum (PR[i] / C[i]))
+        double eps; //точность
+        double[] pagesRankOld = new double[matrixSize]; //PR на предыдущем шаге
+        double[] pagesRank = new double[matrixSize]; //текущий PR
+
+        for (int i = 0; i < matrixSize; i++) {
+            pagesRankOld[i] = 1;
+            for (int j = 0; j < matrixSize; j++){
+                c[i] += matrix[i][j];
+            }
+        }
+
+        do {
+            eps = 0;
+
+            for (int j = 0; j < matrixSize; j++) {
+                sum = 0;
+                pagesRank[j] = 1 - d;
+                for (int i = 0; i < matrixSize; i++) {
+                    if (matrix[i][j] > 0) {
+                        sum += pagesRankOld[i] / c[i];
+                    }
+                }
+                sum = d * sum;
+                pagesRank[j] += sum;
+            }
+            for (int i = 0; i < pagesRank.length; i++) {
+                PR += pagesRank[i];
+            }
+
+            for (int i = 0; i < pagesRank.length; i++) {
+                eps += (pagesRank[i] - pagesRankOld[i]) * (pagesRank[i] = pagesRankOld[i]);
+            }
+            pagesRankOld = pagesRank;
+
+        } while (eps > 0.0001);
+        return PR;
     }
 }
