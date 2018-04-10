@@ -35,14 +35,17 @@ public class Main {
 
         matrix = new int[matrixSize][matrixSize];
 
-        if (matrixFileExists()) {
+        if (matrixFileExists()) {       //чтение из файла
             sparceMatrix = new SparceMatrix();
             sparceMatrix.readFromFile(getFilePath(baseUrl, matrixSize));
             sparceMatrix.print();
-        } else {
+        } else {                        //чтение по http
             /*в нескольких потоках*/
+            System.out.println("Введите кол-во потоков:");
+            int threads = Integer.valueOf(scanner.nextLine());
+
             Date date1 = new Date();
-            readFromUrlParallel(10);
+            readFromUrlParallel(threads);
             long time1 = new Date().getTime() - date1.getTime();
             System.out.println("\n" + time1 + " ms");
 
@@ -56,10 +59,12 @@ public class Main {
 
             System.out.println("Разница: " + (time2 - time1) + " ms");
 
+            /*создание разряженной матрицы*/
             sparceMatrix = new SparceMatrix(matrix);
+            /*запись в файл*/
             sparceMatrix.writeToFile(getFilePath(baseUrl, matrixSize));
         }
-
+        /*подсчет pagerank*/
         getPageRank(sparceMatrix, matrixSize);
     }
 
