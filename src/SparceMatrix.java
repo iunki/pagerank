@@ -1,10 +1,10 @@
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 
-/**
- * Created by yunki on 10.04.2018.
- */
+/*Разреженный строчный формат
+        (Compessed Row Storage CRS или Compessed Sparse Rows CSR)*/
+
+
 public class SparceMatrix {
 
     public ArrayList<Integer> A = new ArrayList<>(); //значения ненулевых элементов
@@ -48,7 +48,7 @@ public class SparceMatrix {
     }
 
     public void writeToFile(String fileName) {
-        System.out.println("Запись в файл...");
+        System.out.println("\nЗапись в файл...");
 
         Writer writer = null;
         try {
@@ -67,7 +67,6 @@ public class SparceMatrix {
             }
 
             writer.flush();
-            System.out.println("Готово!");
         } catch (IOException e) {
             e.printStackTrace();
         } finally {

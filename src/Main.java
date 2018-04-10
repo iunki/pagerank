@@ -5,6 +5,10 @@ import org.jsoup.select.Elements;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 
 public class Main {
@@ -29,14 +33,29 @@ public class Main {
         System.out.println("Введите размер матрицы:");
         matrixSize = Integer.valueOf(scanner.nextLine());
 
-        matrix =  new int[matrixSize][matrixSize];
+        matrix = new int[matrixSize][matrixSize];
 
         if (matrixFileExists()) {
             sparceMatrix = new SparceMatrix();
             sparceMatrix.readFromFile(getFilePath(baseUrl, matrixSize));
             sparceMatrix.print();
         } else {
+            /*в нескольких потоках*/
+            Date date1 = new Date();
+            readFromUrlParallel(10);
+            long time1 = new Date().getTime() - date1.getTime();
+            System.out.println("\n" + time1 + " ms");
+
+            clearVariables();
+
+            /*в одном потоке*/
+            Date date2 = new Date();
             readFromUrl();
+            long time2 = new Date().getTime() - date2.getTime();
+            System.out.println("\n" + time2 + " ms");
+
+            System.out.println("Разница: " + (time2 - time1) + " ms");
+
             sparceMatrix = new SparceMatrix(matrix);
             sparceMatrix.writeToFile(getFilePath(baseUrl, matrixSize));
         }
@@ -49,14 +68,12 @@ public class Main {
         return f.exists();
     }
 
-    public static void readFromUrl() {
-        System.out.println("Чтение по http...");
+    private static void getHrefsPool() {
+        String currLink = "/";
+        hrefsQueue.add(currLink);
+        hrefsArr.add(currLink);
+        boolean flag = true;
         try {
-            String currLink = "/";
-            hrefsQueue.add(currLink);
-            hrefsArr.add(currLink);
-            boolean flag = true;
-
             while (hrefsArr.size() <= matrixSize && flag) {
                 Document doc = Jsoup.connect(baseUrl + currLink).get();
 
@@ -77,8 +94,23 @@ public class Main {
                 currLink = hrefsQueue.poll();
             }
 
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+
+    private static void clearVariables() {
+        hrefsQueue = new PriorityQueue<>();
+        hrefsArr = new ArrayList<>();
+        matrix = new int[matrixSize][matrixSize];
+    }
+
+    public static void readFromUrl() {
+        System.out.println("Чтение по http...");
+        getHrefsPool();
+        try {
             for (int i = 0; i < hrefsArr.size(); i++) {
-                System.out.println(i + "/" + matrixSize);
+                System.out.print(i + " ");
                 Document doc = Jsoup.connect(baseUrl + hrefsArr.get(i)).get();
                 for (int j = 0; j < hrefsArr.size(); j++) {
 
@@ -90,6 +122,50 @@ public class Main {
                     }
 
                 }
+            }
+
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+
+    public static void readFromUrlParallel(int THREADS) { // THREADS кол-во потоков
+        System.out.println("Чтение по http, " + THREADS + " потоков...");
+        try {
+            getHrefsPool();
+
+            ExecutorService pool = Executors.newFixedThreadPool(THREADS);
+            List<Callable<Object>> tasks = new ArrayList<>();
+
+            try {
+                for (int i = 0; i < hrefsArr.size(); i++) {
+
+                    final int I = i;
+
+                    tasks.add(new Callable<Object>() {
+
+                        public Object call() throws Exception {
+                            Document doc = Jsoup.connect(baseUrl + hrefsArr.get(I)).get();
+                            for (int j = 0; j < hrefsArr.size(); j++) {
+
+                                Elements siteHrefs = doc.select("a");
+                                for (Element tag : siteHrefs) {
+                                    if (tag.attr("href").equals(hrefsArr.get(j))) {
+                                        matrix[I][j]++;
+                                    }
+                                }
+
+                            }
+                            System.out.print(I + " ");
+                            return null;
+                        }
+                    });
+                }
+                List<Future<Object>> invokeAll = pool.invokeAll(tasks);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                pool.shutdown();
             }
 
         } catch (Exception e) {
@@ -112,7 +188,7 @@ public class Main {
         for (int i = 0; i < matrixSize; i++) {
             pagesRankOld[i] = 1;
             for (int j = 0; j < matrixSize; j++) {
-                c[i] += sparceMatrix.get(i,j);
+                c[i] += sparceMatrix.get(i, j);
             }
         }
 
@@ -121,7 +197,7 @@ public class Main {
                 sum = 0;
                 pagesRank[j] = 1 - d;
                 for (int i = 0; i < matrixSize; i++) {
-                    if (sparceMatrix.get(i,j) > 0) {
+                    if (sparceMatrix.get(i, j) > 0) {
                         sum += pagesRankOld[i] / c[i];
                     }
                 }
@@ -134,8 +210,9 @@ public class Main {
 
         /*вывод pagerank*/
         System.out.println("---------------");
+        System.out.println("Pagerank: ");
         for (int i = 0; i < pagesRank.length; i++) {
-            System.out.println(String.format("%.2f", pagesRank[i]));
+            System.out.print(String.format("%.2f", pagesRank[i]) + " ");
         }
     }
 
