@@ -25,6 +25,7 @@ public class Main {
 
         if (matrixFileExists()) {
             readFromFile();
+
         } else {
             System.out.println("Введите размер матрицы:");
             matrixSize = Integer.valueOf(scanner.nextLine());
@@ -32,7 +33,7 @@ public class Main {
             readFromUrl();
             writeToFile();
         }
-        System.out.println("PageRank: "+ getPageRank(matrix, matrixSize));
+        getPageRank(matrix, matrixSize);
     }
 
     public static boolean matrixFileExists() {
@@ -40,7 +41,7 @@ public class Main {
         return f.exists();
     }
 
-    public static void readFromUrl(){
+    public static void readFromUrl() {
         System.out.println("Чтение по http...");
         try {
             String currLink = "/";
@@ -69,7 +70,7 @@ public class Main {
             }
 
             for (int i = 0; i < hrefsArr.size(); i++) {
-                System.out.println(i+"/"+matrixSize);
+                System.out.println(i + "/" + matrixSize);
                 Document doc = Jsoup.connect(baseUrl + hrefsArr.get(i)).get();
                 for (int j = 0; j < hrefsArr.size(); j++) {
 
@@ -124,10 +125,8 @@ public class Main {
             for (int i = 0; i < matrix.length; i++) {
                 for (int j = 0; j < matrix[i].length; j++) {
                     writer.append(matrix[i][j] + " ");
-                    System.out.print(matrix[i][j] + " ");
                 }
                 writer.append("\n");
-                System.out.println();
             }
 
             writer.flush();
@@ -146,15 +145,13 @@ public class Main {
     }
 
     public static String getFilePath(String url) {
-        return "./" + url.replaceAll("https|http|/|:|\\s", "") + ".txt";
+        return "./" + url.replaceAll("https|http|/|:|\\s", "_100") + ".txt";
     }
 
-    private static double getPageRank(int[][] matrix, int matrixSize) {
-        double PR = 0; //PageRank рассматриваемой страницы
+    private static void getPageRank(int[][] matrix, int matrixSize) {
         double d = 0.85; //коэфициент затухания
         int c[] = new int[matrixSize]; //общее число ссылок на i-й странице
         double sum; // d * (sum (PR[i] / C[i]))
-        double eps; //точность
         double[] pagesRankOld = new double[matrixSize]; //PR на предыдущем шаге
         double[] pagesRank = new double[matrixSize]; //текущий PR
 
@@ -164,9 +161,8 @@ public class Main {
                 c[i] += matrix[i][j];
             }
         }
-        do {
-            eps = 0;
 
+        for (int k = 0; k < 10; k++) {
             for (int j = 0; j < matrixSize; j++) {
                 sum = 0;
                 pagesRank[j] = 1 - d;
@@ -178,16 +174,23 @@ public class Main {
                 sum = d * sum;
                 pagesRank[j] += sum;
             }
-            for (int i = 0; i < pagesRank.length; i++) {
-                PR += pagesRank[i];
-            }
 
-            for (int i = 0; i < pagesRank.length; i++) {
-                eps += (pagesRank[i] - pagesRankOld[i]) * (pagesRank[i] = pagesRankOld[i]);
-            }
             pagesRankOld = pagesRank;
+        }
 
-        } while (eps > 0.0001);
-        return PR;
+        /*вывод pagerank*/
+        System.out.println("---------------");
+        for (int i = 0; i < pagesRank.length; i++) {
+            System.out.println(String.format("%.2f", pagesRank[i]));
+        }
+    }
+
+
+    public static double getArrSum(double arr[]) {
+        double summ = 0;
+        for (int i = 0; i < arr.length; i++) {
+            summ += arr[i];
+        }
+        return summ;
     }
 }
