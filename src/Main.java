@@ -11,9 +11,12 @@ public class Main {
 
     public static String baseUrl;
 
-    public static int matrixSize = 100;
+    public static int matrixSize;
 
-    public static int[][] matrix = new int[matrixSize][matrixSize];
+    public static int[][] matrix;
+
+    public static SparceMatrix sparceMatrix;
+
 
     public static Queue<String> hrefsQueue = new PriorityQueue<>();
     public static ArrayList<String> hrefsArr = new ArrayList<>();
@@ -23,21 +26,26 @@ public class Main {
         System.out.println("Введите URL:");
         baseUrl = scanner.nextLine().replaceAll("\\s", "");
 
+        System.out.println("Введите размер матрицы:");
+        matrixSize = Integer.valueOf(scanner.nextLine());
+
+        matrix =  new int[matrixSize][matrixSize];
+
         if (matrixFileExists()) {
-            readFromFile();
-
+            sparceMatrix = new SparceMatrix();
+            sparceMatrix.readFromFile(getFilePath(baseUrl, matrixSize));
+            sparceMatrix.print();
         } else {
-            System.out.println("Введите размер матрицы:");
-            matrixSize = Integer.valueOf(scanner.nextLine());
-
             readFromUrl();
-            writeToFile();
+            sparceMatrix = new SparceMatrix(matrix);
+            sparceMatrix.writeToFile(getFilePath(baseUrl, matrixSize));
         }
-        getPageRank(matrix, matrixSize);
+
+        getPageRank(sparceMatrix, matrixSize);
     }
 
     public static boolean matrixFileExists() {
-        File f = new File(getFilePath(baseUrl));
+        File f = new File(getFilePath(baseUrl, matrixSize));
         return f.exists();
     }
 
@@ -89,66 +97,12 @@ public class Main {
         }
     }
 
-    public static void readFromFile() {
-        System.out.println("Чтение из файла...");
-        try (BufferedReader br = new BufferedReader(new FileReader(getFilePath(baseUrl)))) {
-            String line;
-            matrixSize = Integer.valueOf(br.readLine());
-            br.readLine();
-            hrefsArr = new ArrayList<String>(Arrays.asList(br.readLine().split(";")));
 
-            int i = 0;
-            while ((line = br.readLine()) != null) {
-                matrix[i] = Arrays.asList(line.split(" ")).stream().mapToInt(Integer::parseInt).toArray();
-                i++;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    public static String getFilePath(String url, int matrixSize) {
+        return "./" + url.replaceAll("https|http|/|:|\\s", "") + "_" + matrixSize + ".txt";
     }
 
-    public static void writeToFile() {
-        System.out.println("Запись в файл...");
-
-        Writer writer = null;
-        try {
-            writer = new BufferedWriter(new FileWriter(getFilePath(baseUrl)));
-            writer.append(matrixSize + "\n");
-            writer.append(baseUrl + "\n");
-
-            for (int i = 0; i < hrefsArr.size(); i++) {
-                writer.append(hrefsArr.get(i) + ";");
-            }
-
-            writer.append("\n");
-
-            for (int i = 0; i < matrix.length; i++) {
-                for (int j = 0; j < matrix[i].length; j++) {
-                    writer.append(matrix[i][j] + " ");
-                }
-                writer.append("\n");
-            }
-
-            writer.flush();
-            System.out.println("Готово!");
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (writer != null)
-                    writer.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public static String getFilePath(String url) {
-        return "./" + url.replaceAll("https|http|/|:|\\s", "_100") + ".txt";
-    }
-
-    private static void getPageRank(int[][] matrix, int matrixSize) {
+    private static void getPageRank(SparceMatrix sparceMatrix, int matrixSize) {
         double d = 0.85; //коэфициент затухания
         int c[] = new int[matrixSize]; //общее число ссылок на i-й странице
         double sum; // d * (sum (PR[i] / C[i]))
@@ -158,16 +112,16 @@ public class Main {
         for (int i = 0; i < matrixSize; i++) {
             pagesRankOld[i] = 1;
             for (int j = 0; j < matrixSize; j++) {
-                c[i] += matrix[i][j];
+                c[i] += sparceMatrix.get(i,j);
             }
         }
 
-        for (int k = 0; k < 10; k++) {
+        for (int k = 0; k < 20; k++) {
             for (int j = 0; j < matrixSize; j++) {
                 sum = 0;
                 pagesRank[j] = 1 - d;
                 for (int i = 0; i < matrixSize; i++) {
-                    if (matrix[i][j] > 0) {
+                    if (sparceMatrix.get(i,j) > 0) {
                         sum += pagesRankOld[i] / c[i];
                     }
                 }
@@ -185,12 +139,4 @@ public class Main {
         }
     }
 
-
-    public static double getArrSum(double arr[]) {
-        double summ = 0;
-        for (int i = 0; i < arr.length; i++) {
-            summ += arr[i];
-        }
-        return summ;
-    }
 }
